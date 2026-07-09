@@ -1,3 +1,4 @@
 Python-telegram-bot
 Supabase
 Flask
+Requests
