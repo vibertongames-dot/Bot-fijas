@@ -56,17 +56,21 @@ async def recibir_pago(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def admin_decision(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer()
-    accion, cliente_id = query.data.split('_')
-    if accion == 'aprobar':
-        supabase.table("Clientes").insert({"nombre": "Cliente", "username": str(cliente_id), "fecha": datetime.now().strftime("%Y-%m-%d")}).execute()
-        await context.bot.send_message(chat_id=cliente_id, text="🎉 ¡Pago aprobado! Acceso: https://t.me/+Lr7vNO7vqTQyNzhh")
-        await query.edit_message_caption(caption="✅ Aprobado y acceso enviado.")
-    else:
-        await context.bot.send_message(chat_id=cliente_id, text="❌ Tu pago fue rechazado.")
-        await query.edit_message_caption(caption="❌ Rechazado.")
+    await query.answer() # Vital para que el botón responda
+    
+    try:
+        accion, cliente_id = query.data.split('_')
+        if accion == 'aprobar':
+            supabase.table("Clientes").insert({"nombre": "Cliente", "username": str(cliente_id), "fecha": datetime.now().strftime("%Y-%m-%d")}).execute()
+            await context.bot.send_message(chat_id=cliente_id, text="🎉 ¡Pago aprobado! Acceso: https://t.me/+Lr7vNO7vqTQyNzhh")
+            await query.edit_message_caption(caption=f"✅ Aprobado por {query.from_user.first_name}")
+        else:
+            await context.bot.send_message(chat_id=cliente_id, text="❌ Tu pago fue rechazado.")
+            await query.edit_message_caption(caption="❌ Rechazado.")
+    except Exception as e:
+        await query.message.reply_text(f"Error en admin_decision: {str(e)}")
 
-# --- FUNCION DE ESTADISTICAS INTEGRADA ---
+# --- FUNCION DE ESTADISTICAS ---
 async def en_vivo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = "https://free-api-live-football-data.p.rapidapi.com/football-live-scores"
     headers = {
@@ -76,8 +80,6 @@ async def en_vivo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         response = requests.get(url, headers=headers)
         data = response.json()
-        
-        # Procesamiento de respuesta
         if isinstance(data, list) and len(data) > 0:
             mensaje = "📊 **Partidos en vivo ahora:**\n\n"
             for p in data[:5]:
@@ -86,14 +88,13 @@ async def en_vivo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await update.message.reply_text("⚽ No hay partidos en vivo en este momento.")
     except Exception as e:
-        await update.message.reply_text(f"❌ Error al obtener estadísticas: {str(e)}")
+        await update.message.reply_text(f"❌ Error al obtener estadísticas.")
 
 # --- MAIN ---
 if __name__ == '__main__':
     keep_alive()
     app = ApplicationBuilder().token(TOKEN).build()
     
-    # Comandos
     app.add_handler(CommandHandler("en_vivo", en_vivo))
     
     conv_handler = ConversationHandler(
