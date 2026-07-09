@@ -16,7 +16,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     # Ruta de tu imagen
-    ruta_imagen = '/sdcard/Pictures/Telegram/IMG_20260708_181916_435.jpg'
+    ruta_imagen = 'IMG_20260708_181916_435.jpg'
     
     try:
         with open(ruta_imagen, 'rb') as foto:
