@@ -66,23 +66,36 @@ async def admin_decision(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=cliente_id, text="❌ Tu pago fue rechazado.")
         await query.edit_message_caption(caption="❌ Rechazado.")
 
-# --- FUNCION API FÚTBOL ---
+# --- FUNCION DE ESTADISTICAS INTEGRADA ---
 async def en_vivo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    url = "https://free-api-live-football-data.p.rapidapi.com/football-players-search"
+    url = "https://free-api-live-football-data.p.rapidapi.com/football-live-scores"
     headers = {
         "x-rapidapi-key": "191cfa1b2fmsh745862b43b68387p178540jsn7b4150aa4794",
         "x-rapidapi-host": "free-api-live-football-data.p.rapidapi.com"
     }
     try:
-        response = requests.get(url, headers=headers, params={"search": "m"})
-        await update.message.reply_text("✅ API conectada correctamente.")
+        response = requests.get(url, headers=headers)
+        data = response.json()
+        
+        # Procesamiento de respuesta
+        if isinstance(data, list) and len(data) > 0:
+            mensaje = "📊 **Partidos en vivo ahora:**\n\n"
+            for p in data[:5]:
+                mensaje += f"⚽ {p.get('homeTeam', 'Local')} vs {p.get('awayTeam', 'Visita')} -> {p.get('score', 'En juego')}\n"
+            await update.message.reply_text(mensaje, parse_mode='Markdown')
+        else:
+            await update.message.reply_text("⚽ No hay partidos en vivo en este momento.")
     except Exception as e:
-        await update.message.reply_text(f"❌ Error: {str(e)}")
+        await update.message.reply_text(f"❌ Error al obtener estadísticas: {str(e)}")
 
 # --- MAIN ---
 if __name__ == '__main__':
     keep_alive()
     app = ApplicationBuilder().token(TOKEN).build()
+    
+    # Comandos
+    app.add_handler(CommandHandler("en_vivo", en_vivo))
+    
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
@@ -91,7 +104,7 @@ if __name__ == '__main__':
         },
         fallbacks=[CommandHandler('cancel', lambda u, c: ConversationHandler.END)]
     )
+    
     app.add_handler(conv_handler)
-    app.add_handler(CommandHandler("en_vivo", en_vivo))
     app.add_handler(CallbackQueryHandler(admin_decision, pattern='^(aprobar_|rechazar_)'))
     app.run_polling()
