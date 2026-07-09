@@ -56,19 +56,28 @@ async def recibir_pago(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def admin_decision(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer() # Vital para que el botón responda
+    await query.answer()
     
     try:
         accion, cliente_id = query.data.split('_')
         if accion == 'aprobar':
-            supabase.table("Clientes").insert({"nombre": "Cliente", "username": str(cliente_id), "fecha": datetime.now().strftime("%Y-%m-%d")}).execute()
+            # Intentamos insertar, si ya existe, ignoramos el error y enviamos el acceso
+            try:
+                supabase.table("Clientes").insert({
+                    "nombre": "Cliente", 
+                    "username": str(cliente_id), 
+                    "fecha": datetime.now().strftime("%Y-%m-%d")
+                }).execute()
+            except Exception:
+                pass
+                
             await context.bot.send_message(chat_id=cliente_id, text="🎉 ¡Pago aprobado! Acceso: https://t.me/+Lr7vNO7vqTQyNzhh")
             await query.edit_message_caption(caption=f"✅ Aprobado por {query.from_user.first_name}")
         else:
             await context.bot.send_message(chat_id=cliente_id, text="❌ Tu pago fue rechazado.")
             await query.edit_message_caption(caption="❌ Rechazado.")
     except Exception as e:
-        await query.message.reply_text(f"Error en admin_decision: {str(e)}")
+        await query.message.reply_text(f"Error: {str(e)}")
 
 # --- FUNCION DE ESTADISTICAS ---
 async def en_vivo(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -94,9 +103,7 @@ async def en_vivo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 if __name__ == '__main__':
     keep_alive()
     app = ApplicationBuilder().token(TOKEN).build()
-    
     app.add_handler(CommandHandler("en_vivo", en_vivo))
-    
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
@@ -105,7 +112,6 @@ if __name__ == '__main__':
         },
         fallbacks=[CommandHandler('cancel', lambda u, c: ConversationHandler.END)]
     )
-    
     app.add_handler(conv_handler)
     app.add_handler(CallbackQueryHandler(admin_decision, pattern='^(aprobar_|rechazar_)'))
     app.run_polling()
